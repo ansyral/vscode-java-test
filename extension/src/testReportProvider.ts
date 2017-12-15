@@ -4,6 +4,8 @@
 import { TestLevel, TestStatus, TestSuite } from "./protocols";
 import { TestResourceManager } from "./testResourceManager";
 
+import * as fs from 'fs';
+import * as liquid from 'liquid-node';
 import * as os from 'os';
 import * as path from 'path';
 import { window, ExtensionContext, TextDocumentContentProvider, Uri } from "vscode";
@@ -11,11 +13,14 @@ import { window, ExtensionContext, TextDocumentContentProvider, Uri } from "vsco
 export class TestReportProvider implements TextDocumentContentProvider {
 
     public static scheme = 'test-report';
+    private _engine: liquid.Engine;
 
     constructor(private _context: ExtensionContext, private _testResourceProvider: TestResourceManager) {
+        this._engine = new liquid.Engine();
+        this._engine.registerFileSystem(new liquid.LocalFileSystem(this._context.asAbsolutePath(path.join('resources', 'templates')), 'liquid'));
     }
 
-    public provideTextDocumentContent(uri: Uri): string {
+    public async provideTextDocumentContent(uri: Uri): Promise<string> {
         const [target, test] = decodeTestSuite(uri);
         const testsContainedInFile = this._testResourceProvider.getTests(target);
         if (!testsContainedInFile) {
@@ -39,7 +44,7 @@ export class TestReportProvider implements TextDocumentContentProvider {
             </body>`;
     }
 
-    private reportSnippet(test: TestSuite): string {
+    private reportSnippet(test: TestSuite): string | Promise<string> {
         switch (test.level) {
             case TestLevel.Class:
                 return this.classSnippet(test);
@@ -50,131 +55,35 @@ export class TestReportProvider implements TextDocumentContentProvider {
         }
     }
 
-    private classSnippet(test: TestSuite): string {
-        const totalCount: number = test.children.length;
-        const passCount: number = test.children.filter((c) => c.result && c.result.status === TestStatus.Pass).length;
-        const failCount: number = test.children.filter((c) => c.result && c.result.status === TestStatus.Fail).length;
-        const skipCount: number = test.children.filter((c) => c.result && c.result.status === TestStatus.Skipped).length;
-        const allTestsSnippet: string = test.children.map((c) => this.methodSnippetInTable(c)).join(' ');
-        const passedTestsSnippet: string = test.children.filter((c) => c.result && c.result.status === TestStatus.Pass)
-                                                        .map((c) => this.methodSnippetInTable(c)).join(' ');
-        const failedTestsSnippet: string = test.children.filter((c) => c.result && c.result.status === TestStatus.Fail)
-                                                        .map((c) => this.methodSnippetInTable(c)).join(' ');
-        const tableHeaderString: string = `
-            <tr>
-                <th>Method</th>
-                <th>Status</th>
-                <th>Duration(ms)</th>
-                <th>Message</th>
-                <th>StackTrace</th>
-            </tr>`;
-        return `
-            <head>
-                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src *; style-src 'nonce-self'; script-src 'nonce-check';">
-                <style nonce="self">
-                    .run {
-                        width:33%;
-                        float:left;
-                    }
-                    .failed {
-                        width:33%;
-                        float:left;
-                    }
-                    .passed {
-                        width:33%;
-                        float:left;
-                    }
-                    #status div span {
-                        display: table-cell;
-                    }
-                    #status div .counter {
-                        background-color:rgb(200,200,200);
-                        color:black;
-                        width:100%;
-                    }
-                    #color-status {
-                        background-color: ${failCount > 0 ? "red" : (passCount + skipCount === totalCount ? "green" : "orange")};
-                        height: 15px;
-                        float:left;
-                        width:100%;
-                    }
-                </style>
-            </head>
-            <body>
-                <div>Test report of class: ${test.test}</div>
-                <hr/>
-                <div id="status">
-                    <div class="run">
-                        <span class="label">Run:</span><span class="counter">${passCount + failCount + skipCount}/${totalCount}</span>
-                    </div>
-                    <div class="passed"><span class="label">Passed:</span><span class="counter">${passCount}</span></div>
-                    <div class="failed"><span class="label">Failed:</span><span class="counter">${failCount}</span></div>
-                </div>
-                <div id="color-status">
-                    &nbsp;
-                </div>
-                <div id="summary">
-                    <span>${test.result && test.result.summary ? "Summary: " + test.result.summary : ""}</span>
-                </div>
-                <div id="filter">
-                    <label><input type="radio" name="test" value="all" checked ="checked"> All tests</label>
-                    <label><input type="radio" name="test" value="passed"> Passed</label>
-                    <label><input type="radio" name="test" value="failed"> Failed</label>
-                </div>
-                <div id="children">
-                    <table border="1">
-                        ${tableHeaderString}
-                        ${allTestsSnippet}
-                    </table>
-                </div>
-                <script nonce="check">
-                    document.addEventListener('DOMContentLoaded', () => {
-                        const elements = [...document.getElementsByTagName("input")];
-                        elements.forEach((element) => element.addEventListener('change', check));
-                    });
-                    function check(event) {
-                        const radio = event.target;
-                        const v = radio.value;
-                        const table = document.getElementById("children").getElementsByTagName("table")[0];
-                        if (v === 'all') {
-                            table.innerHTML = ${'`' + tableHeaderString + allTestsSnippet + '`'};
-                        } else if (v === 'passed') {
-                            table.innerHTML = ${'`' + tableHeaderString + passedTestsSnippet + '`'};
-                        } else if (v === 'failed') {
-                            table.innerHTML = ${'`' + tableHeaderString + failedTestsSnippet + '`'};
-                        }
-                    }
-                </script>
-            </body>`;
+    private classSnippet(test: TestSuite): Promise<string> {
+        const passedTests: TestSuite[] = test.children.filter((c) => c.result && c.result.status === TestStatus.Pass);
+        const failedTests: TestSuite[] = test.children.filter((c) => c.result && c.result.status === TestStatus.Fail);
+        const skippedTests: TestSuite[] = test.children.filter((c) => c.result && c.result.status === TestStatus.Skipped);
+        const extraInfo = {
+            allTests: test.children,
+            passedTests,
+            failedTests,
+            skippedTests,
+            totalCount: test.children.length,
+            passCount: passedTests.length,
+            failedCount: failedTests.length,
+            skippedCount: skippedTests.length,
+        };
+        const copied = {...test, ...extraInfo};
+        return this.renderSnippet(copied, 'report_class');
     }
 
-    private methodSnippetInTable(test: TestSuite): string {
-        let content: string = `<tr><td>${test.test.replace('#', '.')}</td>`;
-        content += `<td>${test.result ? test.result.status : "Not run"}</td>`;
-        content += `<td>${test.result && test.result.duration ? test.result.duration : "N/A"}</td>`;
-        content += `<td>${test.result && test.result.message ?  test.result.message : "N/A"}</td>`;
-        content += `<td>${test.result && test.result.details ? "<pre><code>" + test.result.details + "</code></pre>" : "N/A"}</td></tr>`;
-        return content;
+    private methodSnippet(test: TestSuite): Promise<string> {
+        return this.renderSnippet(test, 'report_method');
     }
 
-    private methodSnippet(test: TestSuite): string {
-        return `
-            <body>
-                <div>Test report of method: ${test.test.replace('#', '.')}</div>
-                <hr/>
-                <div id="status">
-                    <span>Status:    ${test.result ? test.result.status : "Not run"}</span>
-                </div>
-                <div id="duration">
-                    <span>${test.result && test.result.duration ? "Duration: " + test.result.duration + " milliseconds" : "N/A"}</span>
-                </div>
-                <div id="message">
-                    <span>${test.result && test.result.message ? "Message: " + test.result.message : "N/A"}</span>
-                </div>
-                <div id="callstack">
-                    <div>${test.result && test.result.details ? "CallStack: <pre><code>" + test.result.details + "</code></pre>" : "N/A"}</div>
-                </div>
-            </body>`;
+    private async renderSnippet(test: TestSuite, templateName: string): Promise<string> {
+        return this._engine.fileSystem.readTemplateFile(templateName).then((template) => {
+            return this._engine.parseAndRender(template, test);
+        },
+        (reason) => {
+            return Promise.reject(reason);
+        });
     }
 }
 

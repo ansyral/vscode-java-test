@@ -221,7 +221,7 @@ async function runSingleton(javaHome: string, tests: TestSuite[] | TestSuite, st
 function showDetails(test: TestSuite) {
     const editor = window.activeTextEditor;
     const uri: Uri = encodeTestSuite(editor.document.uri, test);
-    return commands.executeCommand('vscode.previewHtml', uri, ViewColumn.Two, 'Test Report Preview');
+    return commands.executeCommand('vscode.previewHtml', uri, ViewColumn.Two, 'Test Report');
 }
 
 async function parseParams(
