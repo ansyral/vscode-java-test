@@ -35,6 +35,7 @@ import { TestResultAnalyzer } from './testResultAnalyzer';
 import { TestStatusBarProvider } from './testStatusBarProvider';
 import { TestExplorer } from './Explorer/testExplorer';
 import { TestTreeNode } from './Explorer/testTreeNode';
+import { TestRunnerWrapper } from './Runner/testRunnerWrapper';
 import { CommandUtility } from './Utils/commandUtility';
 
 const isWindows = process.platform.indexOf('win') === 0;
@@ -84,9 +85,12 @@ export async function activate(context: ExtensionContext) {
             return (suites: TestSuite[] | TestSuite) =>
             runSingleton(javaHome, suites, context.storagePath, true, t.id);
         }));
-        context.subscriptions.push(TelemetryWrapper.registerCommand(Commands.JAVA_TEST_SHOW_REPORT, (t: Transaction) => {
+        /* context.subscriptions.push(TelemetryWrapper.registerCommand(Commands.JAVA_TEST_SHOW_REPORT, (t: Transaction) => {
             return (test: TestSuite[] | TestSuite) =>
-            showDetails(test);
+             showDetails(test);
+        })); */
+        context.subscriptions.push(commands.registerCommand(Commands.JAVA_TEST_SHOW_REPORT, (test: TestSuite[] | TestSuite) => {
+            return showDetails(test);
         }));
         context.subscriptions.push(TelemetryWrapper.registerCommand(Commands.JAVA_TEST_SHOW_OUTPUT, (t: Transaction) => {
             return () =>
@@ -105,6 +109,7 @@ export async function activate(context: ExtensionContext) {
             testExplorer.run(node, true);
         }));
         classPathManager.refresh();
+        TestRunnerWrapper.InitializeRunnerPool(javaHome, context.storagePath, classPathManager, onDidChange, logger);
     }).catch((err) => {
         window.showErrorMessage("couldn't find Java home...");
     });

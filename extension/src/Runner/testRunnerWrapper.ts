@@ -45,6 +45,10 @@ export class TestRunnerWrapper {
         if (kind.length > 1) {
             return null;
         }
+        // remove the hack later
+        if (kind[0] === undefined) {
+            kind[0] = TestKind.JUnit;
+        }
         if (!TestRunnerWrapper.runnerPool.has(kind[0])) {
             return null;
         }

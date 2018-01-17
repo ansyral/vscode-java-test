@@ -7,6 +7,8 @@ import { window, workspace, Event, EventEmitter, ExtensionContext, TreeDataProvi
 import * as Commands from '../commands';
 import { TestLevel, TestSuite } from '../protocols';
 import { TestResourceManager } from '../testResourceManager';
+import { TestRunnerContext } from '../Runner/testRunnerContext';
+import { TestRunnerWrapper } from '../Runner/testRunnerWrapper';
 import { TestTreeNode, TestTreeNodeType } from "./testTreeNode";
 
 export class TestExplorer implements TreeDataProvider<TestTreeNode> {
@@ -53,8 +55,7 @@ export class TestExplorer implements TreeDataProvider<TestTreeNode> {
     }
 
     public run(element: TestTreeNode, debugMode: boolean) {
-        // TODO
-        return null;
+        return TestRunnerWrapper.run(new TestRunnerContext(this.resolveTestSuites(element), debugMode));
     }
 
     private createTestTreeNode(
@@ -144,5 +145,21 @@ export class TestExplorer implements TreeDataProvider<TestTreeNode> {
             };
         }
         return undefined;
+    }
+
+    private resolveTestSuites(element: TestTreeNode): TestSuite[] {
+        if (!element) {
+            return (this.getChildren(element) as TestTreeNode[]).map((f) => this.resolveTestSuites(f)).reduce((a, b) => a.concat(b));
+        }
+        if (element.level === TestTreeNodeType.Class || element.level === TestTreeNodeType.Method) {
+            return[this.toTestSuite(element)];
+        }
+        return element.children.map((c) => this.resolveTestSuites(c)).reduce((a, b) => a.concat(b));
+    }
+
+    private toTestSuite(element: TestTreeNode): TestSuite {
+        const uri: Uri = Uri.parse(element.uri);
+        const tests: TestSuite[] = this._testCollectionStorage.getTests(uri).tests;
+        return tests.filter((t) => t.test === element.fullName)[0];
     }
 }
