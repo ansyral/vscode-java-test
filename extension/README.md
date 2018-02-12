@@ -15,7 +15,7 @@ A lightweight extension to run and debug Java test cases in Visual Studio Code. 
 
 ## Use
 
-![Run/debug JUnit test](https://github.com/ansyral/vscode-java-test/blob/checkgif/extension/demo/junit-demo-2-11-resize.gif)
+![Run/debug JUnit test](https://github.com/ansyral/vscode-java-test/blob/checkgif/extension/demo/junit-demo-2-11.gif)
 
 ## Available commands
 
