@@ -183,7 +183,8 @@ function showDetails(test: TestSuite[] | TestSuite) {
 function editTestConfig(test: TestSuite[] | TestSuite, storagePath: string) {
     const testList = Array.isArray(test) ? test : [test];
     const testsWithConfig = testList.filter((t) => t.config);
-    let config: TestConfig = testsWithConfig.length > 0 ? testsWithConfig[0].config : TestConfigUtility.createDefaultTestConfig(testsWithConfig[0], projectManager);
+    const config: TestConfig = testsWithConfig.length > 0 ? testsWithConfig[0].config :
+    TestConfigUtility.createDefaultTestConfig(testsWithConfig[0], projectManager);
     const editor = window.activeTextEditor;
     const dir = storagePath;
     const uri = Uri.parse(`untitled:${path.join(dir, 'test.config')}`);

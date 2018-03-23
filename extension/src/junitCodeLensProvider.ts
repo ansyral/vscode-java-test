@@ -118,5 +118,3 @@ function getCodeLens(tests: TestSuite[], projectManager: ProjectManager): CodeLe
         return codeLenses;
     }).reduce((a, b) => a.concat(b), []);
 }
-
-

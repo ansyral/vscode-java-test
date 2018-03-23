@@ -3,6 +3,7 @@
 
 import { Range } from 'vscode';
 import { TestLevel, TestResult } from '../Models/protocols';
+import { TestConfig } from '../Models/testConfig';
 
 export interface ITestInfo {
     range: Range;
@@ -12,6 +13,7 @@ export interface ITestInfo {
     children: ITestInfo[];
     packageName: string;
     level: TestLevel;
+    config?: TestConfig;
 }
 
 export interface ITestResult {

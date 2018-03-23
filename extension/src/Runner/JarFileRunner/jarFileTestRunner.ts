@@ -18,6 +18,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as rimraf from 'rimraf';
 import { debug, window, workspace, EventEmitter, Uri } from 'vscode';
+import { TestConfig } from '../../Models/testConfig';
 
 export abstract class JarFileTestRunner implements ITestRunner {
     constructor(
@@ -66,7 +67,9 @@ export abstract class JarFileTestRunner implements ITestRunner {
             return Promise.reject('Illegal env type, should pass in IJarFileTestRunnerParameters!');
         }
         const command: string = await this.constructCommandWithWrapper(jarParams);
-        const cwd = workspace.getWorkspaceFolder(Uri.parse(env.tests[0].uri)).uri.fsPath;
+        const config: TestConfig = env.tests[0].config;
+        const cwd = config ? (env.isDebugMode ? config.debug.workingDirectory : config.run.workingDirectory) :
+        workspace.getWorkspaceFolder(Uri.parse(env.tests[0].uri)).uri.fsPath;
         const process = cp.exec(command, {maxBuffer: 1024 * 1024, cwd});
         return new Promise<ITestResult[]>((resolve, reject) => {
             const testResultAnalyzer: JarFileRunnerResultAnalyzer = this.getTestResultAnalyzer(jarParams);
@@ -120,6 +123,7 @@ export abstract class JarFileTestRunner implements ITestRunner {
                         request: 'attach',
                         hostName: 'localhost',
                         port: jarParams.port,
+                        projectName: config ? config.debug.projectName : undefined,
                     });
                 }, 500);
             }

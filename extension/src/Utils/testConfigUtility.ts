@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-import { ProjectManager } from "../projectManager";
-import { TestSuite } from "../Models/protocols";
-import { TestConfig } from "../Models/testConfig";
-import { workspace, Uri } from "vscode";
+import { workspace, Uri } from 'vscode';
+
+import { ProjectManager } from '../projectManager';
+import { TestSuite } from '../Models/protocols';
+import { TestConfig } from '../Models/testConfig';
 
 export function createDefaultTestConfig(test: TestSuite, projectManager: ProjectManager): TestConfig {
     const uri: Uri = Uri.parse(test.uri);
@@ -16,14 +17,14 @@ export function createDefaultTestConfig(test: TestSuite, projectManager: Project
             workingDirectory,
             args: [],
             vmargs: [],
-            preLaunchTask: "",
+            preLaunchTask: '',
         },
         debug: {
             projectName,
             workingDirectory,
             args: [],
             vmargs: [],
-            preLaunchTask: "",
+            preLaunchTask: '',
         },
     };
     return config;
