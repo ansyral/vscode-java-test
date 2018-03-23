@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { Range } from 'vscode';
+import { TestConfig } from './testConfig';
 
 export type Test = {
     tests: TestSuite[];
@@ -20,6 +21,7 @@ export type TestSuite = {
     level: TestLevel;
     kind: TestKind;
     result?: TestResult;
+    config?: TestConfig;
 };
 
 export type TestResult = {

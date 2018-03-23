@@ -8,3 +8,4 @@ export const TELEMETRY_EXCEPTION_SCOPE = 'exception';
 export const TELEMETRY_INFO_SCOPE = 'info';
 export const TELEMETRY_WARN_SCOPE = 'warn';
 export const TEST_EXPLORER_VIEW_ID = 'testExplorer';
+

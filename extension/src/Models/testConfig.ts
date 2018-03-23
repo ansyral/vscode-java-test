@@ -9,7 +9,7 @@ export type TestConfig = {
 export type RunConfig = {
     projectName: string;
     workingDirectory: string;
-    args?: any[];
-    vmargs?: any[];
-    preLaunchTask?: string;
+    args: any[];
+    vmargs: any[];
+    preLaunchTask: string;
 };

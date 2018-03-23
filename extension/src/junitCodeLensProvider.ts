@@ -11,6 +11,7 @@ import * as Commands from './Constants/commands';
 import { TestResult, TestStatus, TestSuite } from './Models/protocols';
 import { RunConfig, TestConfig } from './Models/testConfig';
 import * as FetchTestsUtility from './Utils/fetchTestUtility';
+import * as TestConfigUtility from './Utils/testConfigUtility';
 import * as Logger from './Utils/Logger/logger';
 
 export class JUnitCodeLensProvider implements CodeLensProvider {
@@ -81,7 +82,9 @@ function getTestStatusIcon(status?: TestStatus): string {
 
 function getCodeLens(tests: TestSuite[], projectManager: ProjectManager): CodeLens[] {
     return tests.map((test) => {
-        const config: TestConfig = createDefaultTestConfig(test, projectManager);
+        if (!test.config) {
+            test.config = TestConfigUtility.createDefaultTestConfig(test, projectManager);
+        }
         const codeLenses = [
             new CodeLens(test.range, {
                 title: 'Run Test',
@@ -99,7 +102,7 @@ function getCodeLens(tests: TestSuite[], projectManager: ProjectManager): CodeLe
                 title: 'Edit Configuration',
                 command: Commands.JAVA_CONFIGURE_TEST_COMMAND,
                 tooltip: 'Configure Test',
-                arguments: [config],
+                arguments: [test],
             }),
         ];
 
@@ -116,19 +119,4 @@ function getCodeLens(tests: TestSuite[], projectManager: ProjectManager): CodeLe
     }).reduce((a, b) => a.concat(b), []);
 }
 
-function createDefaultTestConfig(test: TestSuite, projectManager: ProjectManager): TestConfig {
-    const uri: Uri = Uri.parse(test.uri);
-    const projectName: string = projectManager.getProjectName(uri);
-    const workingDirectory: string = workspace.getWorkspaceFolder(uri).uri.fsPath;
-    const config: TestConfig = {
-        run: {
-            projectName,
-            workingDirectory,
-        },
-        debug: {
-            projectName,
-            workingDirectory,
-        },
-    };
-    return config;
-}
+

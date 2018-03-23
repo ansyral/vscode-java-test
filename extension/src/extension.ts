@@ -18,7 +18,7 @@ import * as path from 'path';
 import * as pathExists from 'path-exists';
 import * as rimraf from 'rimraf';
 // tslint:disable-next-line
-import { commands, debug, languages, window, workspace, EventEmitter, ExtensionContext, OutputChannel, ProgressLocation, Uri, ViewColumn } from 'vscode';
+import { commands, debug, languages, window, workspace, EventEmitter, ExtensionContext, OutputChannel, ProgressLocation, SnippetString, Uri, ViewColumn, Position } from 'vscode';
 import TelemetryReporter from 'vscode-extension-telemetry';
 import { Session, TelemetryWrapper } from 'vscode-extension-telemetry-wrapper';
 
@@ -34,10 +34,12 @@ import * as Constants from './Constants/constants';
 import { TestExplorer } from './Explorer/testExplorer';
 import { TestTreeNode } from './Explorer/testTreeNode';
 import { TestKind, TestLevel, TestSuite } from './Models/protocols';
+import { TestConfig } from './Models/testConfig';
 import { TestRunnerWrapper } from './Runner/testRunnerWrapper';
 import { JUnit5TestRunner } from './Runner/JUnitTestRunner/junit5TestRunner';
 import { JUnitTestRunner } from './Runner/JUnitTestRunner/junitTestRunner';
 import { CommandUtility } from './Utils/commandUtility';
+import * as TestConfigUtility from './Utils/testConfigUtility';
 import * as Logger from './Utils/Logger/logger';
 import { OutputTransport } from './Utils/Logger/outputTransport';
 import { TelemetryTransport } from './Utils/Logger/telemetryTransport';
@@ -96,6 +98,8 @@ export async function activate(context: ExtensionContext) {
             testExplorer.run(node, true)));
         context.subscriptions.push(TelemetryWrapper.registerCommand(Commands.JAVA_TEST_OPEN_LOG, () =>
             openTestLogFile(context.asAbsolutePath(Configs.LOG_FILE_NAME))));
+        context.subscriptions.push(TelemetryWrapper.registerCommand(Commands.JAVA_CONFIGURE_TEST_COMMAND, (test: TestSuite[] | TestSuite) =>
+            editTestConfig(test, context.storagePath)));
         TestRunnerWrapper.registerRunner(TestKind.JUnit, new JUnitTestRunner(javaHome, context.storagePath, classPathManager, onDidChange));
         TestRunnerWrapper.registerRunner(TestKind.JUnit5, new JUnit5TestRunner(javaHome, context.storagePath, classPathManager, onDidChange));
         classPathManager.refresh();
@@ -174,6 +178,22 @@ function showDetails(test: TestSuite[] | TestSuite) {
     const config = workspace.getConfiguration();
     const position: string = config.get<string>('java.test.report.position', 'sideView');
     return commands.executeCommand('vscode.previewHtml', uri, position === 'sideView' ? ViewColumn.Two : ViewColumn.Active, name);
+}
+
+function editTestConfig(test: TestSuite[] | TestSuite, storagePath: string) {
+    const testList = Array.isArray(test) ? test : [test];
+    const testsWithConfig = testList.filter((t) => t.config);
+    let config: TestConfig = testsWithConfig.length > 0 ? testsWithConfig[0].config : TestConfigUtility.createDefaultTestConfig(testsWithConfig[0], projectManager);
+    const editor = window.activeTextEditor;
+    const dir = storagePath;
+    const uri = Uri.parse(`untitled:${path.join(dir, 'test.config')}`);
+    return workspace.openTextDocument(uri).then((doc) => {
+        return window.showTextDocument(doc, editor.viewColumn + 1).then((edit) => {
+            edit.insertSnippet(new SnippetString(JSON.stringify(config, null, 4)), new Position(0, 0));
+        });
+    }, (err) => {
+        Logger.error(err);
+    });
 }
 
 function openTestLogFile(logFile: string): Thenable<boolean> {
