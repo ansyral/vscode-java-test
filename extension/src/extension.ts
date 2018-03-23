@@ -24,6 +24,7 @@ import { Session, TelemetryWrapper } from 'vscode-extension-telemetry-wrapper';
 
 import { ClassPathManager } from './classPathManager';
 import { JUnitCodeLensProvider } from './junitCodeLensProvider';
+import { ProjectManager } from './projectManager';
 import { encodeTestSuite, parseTestReportName, TestReportProvider } from './testReportProvider';
 import { TestResourceManager } from './testResourceManager';
 import { TestStatusBarProvider } from './testStatusBarProvider';
@@ -48,6 +49,7 @@ const testStatusBarItem: TestStatusBarProvider = TestStatusBarProvider.getInstan
 const outputChannel: OutputChannel = window.createOutputChannel('Test Output');
 const testResourceManager: TestResourceManager = new TestResourceManager();
 const classPathManager: ClassPathManager = new ClassPathManager();
+const projectManager: ProjectManager = new ProjectManager();
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -55,7 +57,7 @@ export async function activate(context: ExtensionContext) {
     activateTelemetry(context);
     Logger.configure(context, [new TelemetryTransport({ level: 'warn' }), new OutputTransport({ level: 'info', channel: outputChannel })]);
     await testStatusBarItem.init(testResourceManager.refresh());
-    const codeLensProvider = new JUnitCodeLensProvider(onDidChange, testResourceManager);
+    const codeLensProvider = new JUnitCodeLensProvider(onDidChange, testResourceManager, projectManager);
     context.subscriptions.push(languages.registerCodeLensProvider(Configs.LANGUAGE, codeLensProvider));
     const testReportProvider: TestReportProvider = new TestReportProvider(context, testResourceManager);
     context.subscriptions.push(workspace.registerTextDocumentContentProvider(TestReportProvider.scheme, testReportProvider));
@@ -97,6 +99,7 @@ export async function activate(context: ExtensionContext) {
         TestRunnerWrapper.registerRunner(TestKind.JUnit, new JUnitTestRunner(javaHome, context.storagePath, classPathManager, onDidChange));
         TestRunnerWrapper.registerRunner(TestKind.JUnit5, new JUnit5TestRunner(javaHome, context.storagePath, classPathManager, onDidChange));
         classPathManager.refresh();
+        projectManager.refresh();
     }).catch((err) => {
         window.showErrorMessage("couldn't find Java home...");
         Logger.error("couldn't find Java home.", {

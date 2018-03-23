@@ -66,7 +66,8 @@ export abstract class JarFileTestRunner implements ITestRunner {
             return Promise.reject('Illegal env type, should pass in IJarFileTestRunnerParameters!');
         }
         const command: string = await this.constructCommandWithWrapper(jarParams);
-        const process = cp.exec(command, {maxBuffer: 1024 * 1024});
+        const cwd = workspace.getWorkspaceFolder(Uri.parse(env.tests[0].uri)).uri.fsPath;
+        const process = cp.exec(command, {maxBuffer: 1024 * 1024, cwd});
         return new Promise<ITestResult[]>((resolve, reject) => {
             const testResultAnalyzer: JarFileRunnerResultAnalyzer = this.getTestResultAnalyzer(jarParams);
             let bufferred: string = '';

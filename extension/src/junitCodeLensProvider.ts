@@ -3,18 +3,21 @@
 
 'use strict';
 
-import { CancellationToken, CodeLens, CodeLensProvider, Event, EventEmitter, ProviderResult, TextDocument } from 'vscode';
+import { workspace, CancellationToken, CodeLens, CodeLensProvider, Event, EventEmitter, ProviderResult, TextDocument, Uri } from 'vscode';
 
+import { ProjectManager } from './projectManager';
 import { TestResourceManager } from './testResourceManager';
 import * as Commands from './Constants/commands';
 import { TestResult, TestStatus, TestSuite } from './Models/protocols';
+import { RunConfig, TestConfig } from './Models/testConfig';
 import * as FetchTestsUtility from './Utils/fetchTestUtility';
 import * as Logger from './Utils/Logger/logger';
 
 export class JUnitCodeLensProvider implements CodeLensProvider {
     constructor(
         private _onDidChange: EventEmitter<void>,
-        private _testCollectionStorage: TestResourceManager) {
+        private _testCollectionStorage: TestResourceManager,
+        private _projectManager: ProjectManager) {
     }
 
     get onDidChangeCodeLenses(): Event<void> {
@@ -24,19 +27,19 @@ export class JUnitCodeLensProvider implements CodeLensProvider {
     public async provideCodeLenses(document: TextDocument, token: CancellationToken) {
         let testsFromCache = this._testCollectionStorage.getTests(document.uri);
         if (testsFromCache && !testsFromCache.dirty) {
-            return getCodeLens(testsFromCache.tests);
+            return getCodeLens(testsFromCache.tests, this._projectManager);
         }
         return FetchTestsUtility.fetchTests(document).then((tests: TestSuite[]) => {
             // check again in case the storage updated during fetching
             testsFromCache = this._testCollectionStorage.getTests(document.uri);
             if (testsFromCache && !testsFromCache.dirty) {
-                return getCodeLens(testsFromCache.tests);
+                return getCodeLens(testsFromCache.tests, this._projectManager);
             }
             if (testsFromCache) {
                 this.mergeTestResult(testsFromCache.tests, tests);
             }
             this._testCollectionStorage.storeTests(document.uri, tests);
-            return getCodeLens(tests);
+            return getCodeLens(tests, this._projectManager);
         },
         (reason) => {
             if (token.isCancellationRequested) {
@@ -76,8 +79,9 @@ function getTestStatusIcon(status?: TestStatus): string {
     }
 }
 
-function getCodeLens(tests: TestSuite[]): CodeLens[] {
+function getCodeLens(tests: TestSuite[], projectManager: ProjectManager): CodeLens[] {
     return tests.map((test) => {
+        const config: TestConfig = createDefaultTestConfig(test, projectManager);
         const codeLenses = [
             new CodeLens(test.range, {
                 title: 'Run Test',
@@ -90,6 +94,12 @@ function getCodeLens(tests: TestSuite[]): CodeLens[] {
                 command: Commands.JAVA_DEBUG_TEST_COMMAND,
                 tooltip: 'Debug Test',
                 arguments: [test],
+            }),
+            new CodeLens(test.range, {
+                title: 'Edit Configuration',
+                command: Commands.JAVA_CONFIGURE_TEST_COMMAND,
+                tooltip: 'Configure Test',
+                arguments: [config],
             }),
         ];
 
@@ -104,4 +114,21 @@ function getCodeLens(tests: TestSuite[]): CodeLens[] {
 
         return codeLenses;
     }).reduce((a, b) => a.concat(b), []);
+}
+
+function createDefaultTestConfig(test: TestSuite, projectManager: ProjectManager): TestConfig {
+    const uri: Uri = Uri.parse(test.uri);
+    const projectName: string = projectManager.getProjectName(uri);
+    const workingDirectory: string = workspace.getWorkspaceFolder(uri).uri.fsPath;
+    const config: TestConfig = {
+        run: {
+            projectName,
+            workingDirectory,
+        },
+        debug: {
+            projectName,
+            workingDirectory,
+        },
+    };
+    return config;
 }
