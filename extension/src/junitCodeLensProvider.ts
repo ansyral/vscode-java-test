@@ -11,7 +11,6 @@ import * as Commands from './Constants/commands';
 import { TestResult, TestStatus, TestSuite } from './Models/protocols';
 import { RunConfig, TestConfig } from './Models/testConfig';
 import * as FetchTestsUtility from './Utils/fetchTestUtility';
-import * as TestConfigUtility from './Utils/testConfigUtility';
 import * as Logger from './Utils/Logger/logger';
 
 export class JUnitCodeLensProvider implements CodeLensProvider {
@@ -82,9 +81,6 @@ function getTestStatusIcon(status?: TestStatus): string {
 
 function getCodeLens(tests: TestSuite[], projectManager: ProjectManager): CodeLens[] {
     return tests.map((test) => {
-        if (!test.config) {
-            test.config = TestConfigUtility.createDefaultTestConfig(test, projectManager);
-        }
         const codeLenses = [
             new CodeLens(test.range, {
                 title: 'Run Test',
@@ -99,9 +95,15 @@ function getCodeLens(tests: TestSuite[], projectManager: ProjectManager): CodeLe
                 arguments: [test],
             }),
             new CodeLens(test.range, {
-                title: 'Edit Configuration',
-                command: Commands.JAVA_CONFIGURE_TEST_COMMAND,
-                tooltip: 'Configure Test',
+                title: 'Run With Config',
+                command: Commands.JAVA_RUN_WITH_CONFIG_COMMAND,
+                tooltip: 'Run With Config',
+                arguments: [test],
+            }),
+            new CodeLens(test.range, {
+                title: 'Debug With Config',
+                command: Commands.JAVA_DEBUG_WITH_CONFIG_COMMAND,
+                tooltip: 'Debug With Config',
                 arguments: [test],
             }),
         ];

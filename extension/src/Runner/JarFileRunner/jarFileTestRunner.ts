@@ -4,6 +4,7 @@
 import { ClassPathManager } from '../../classPathManager';
 import { TestStatusBarProvider } from '../../testStatusBarProvider';
 import { TestSuite } from '../../Models/protocols';
+import { RunConfig, TestConfig } from '../../Models/testConfig';
 import { ClassPathUtility } from '../../Utils/classPathUtility';
 import * as Logger from '../../Utils/Logger/logger';
 import { ITestResult } from '../testModel';
@@ -18,7 +19,6 @@ import * as os from 'os';
 import * as path from 'path';
 import * as rimraf from 'rimraf';
 import { debug, window, workspace, EventEmitter, Uri } from 'vscode';
-import { TestConfig } from '../../Models/testConfig';
 
 export abstract class JarFileTestRunner implements ITestRunner {
     constructor(
@@ -34,7 +34,7 @@ export abstract class JarFileTestRunner implements ITestRunner {
     public abstract constructCommand(params: IJarFileTestRunnerParameters): Promise<string>;
     public abstract getTestResultAnalyzer(params: IJarFileTestRunnerParameters): JarFileRunnerResultAnalyzer;
 
-    public async setup(tests: TestSuite[], isDebugMode: boolean): Promise<ITestRunnerParameters> {
+    public async setup(tests: TestSuite[], isDebugMode: boolean, config: RunConfig): Promise<ITestRunnerParameters> {
         const uris: Uri[] = tests.map((t) => Uri.parse(t.uri));
         const classpaths: string[] = this._classPathManager.getClassPaths(uris);
         const port: number | undefined = isDebugMode ? await this.getPortWithWrapper() : undefined;
@@ -56,6 +56,7 @@ export abstract class JarFileTestRunner implements ITestRunner {
             runnerJarFilePath,
             runnerClassName,
             storagePath: storageForThisRun,
+            config,
         };
 
         return params;
@@ -67,9 +68,7 @@ export abstract class JarFileTestRunner implements ITestRunner {
             return Promise.reject('Illegal env type, should pass in IJarFileTestRunnerParameters!');
         }
         const command: string = await this.constructCommandWithWrapper(jarParams);
-        const config: TestConfig = env.tests[0].config;
-        const cwd = config ? (env.isDebugMode ? config.debug.workingDirectory : config.run.workingDirectory) :
-        workspace.getWorkspaceFolder(Uri.parse(env.tests[0].uri)).uri.fsPath;
+        const cwd = env.config ? env.config.workingDirectory : workspace.getWorkspaceFolder(Uri.parse(env.tests[0].uri)).uri.fsPath;
         const process = cp.exec(command, {maxBuffer: 1024 * 1024, cwd});
         return new Promise<ITestResult[]>((resolve, reject) => {
             const testResultAnalyzer: JarFileRunnerResultAnalyzer = this.getTestResultAnalyzer(jarParams);
@@ -123,7 +122,7 @@ export abstract class JarFileTestRunner implements ITestRunner {
                         request: 'attach',
                         hostName: 'localhost',
                         port: jarParams.port,
-                        projectName: config ? config.debug.projectName : undefined,
+                        projectName: env.config ? env.config.projectName : undefined,
                     });
                 }, 500);
             }

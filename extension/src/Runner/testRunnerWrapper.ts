@@ -4,6 +4,7 @@
 import { ClassPathManager } from '../classPathManager';
 import { TestStatusBarProvider } from '../testStatusBarProvider';
 import { TestKind, TestLevel, TestResult, TestStatus, TestSuite } from '../Models/protocols';
+import { RunConfig } from '../Models/testConfig';
 import * as Logger from '../Utils/Logger/logger';
 import { ITestRunner } from './testRunner';
 import { ITestRunnerParameters } from './testRunnerParameters';
@@ -17,7 +18,7 @@ export class TestRunnerWrapper {
         TestRunnerWrapper.runnerPool.set(kind, runner);
     }
 
-    public static async run(tests: TestSuite[], isDebugMode: boolean): Promise<void> {
+    public static async run(tests: TestSuite[], isDebugMode: boolean, config: RunConfig): Promise<void> {
         if (TestRunnerWrapper.running) {
             window.showInformationMessage('A test session is currently running. Please wait until it finishes.');
             Logger.info('Skip this run cause we only support running one session at the same time');
@@ -28,7 +29,7 @@ export class TestRunnerWrapper {
             const runners: Map<ITestRunner, TestSuite[]> = TestRunnerWrapper.classifyTests(tests);
             await TestStatusBarProvider.getInstance().update(tests, (async () => {
                 for (const [runner, t] of runners.entries()) {
-                    const params = await runner.setup(t, isDebugMode);
+                    const params = await runner.setup(t, isDebugMode, config);
                     const res = await runner.run(params);
                     this.updateTestStorage(t, res);
                     await runner.postRun();

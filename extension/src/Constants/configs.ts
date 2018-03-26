@@ -4,3 +4,4 @@
 export const LANGUAGE = 'java';
 export const LOG_FILE_NAME = 'java_test_runner.log';
 export const MAX_CLASS_PATH_LENGTH = 4096;
+export const TEST_LAUNCH_CONFIG_NAME = 'test-launch.config';

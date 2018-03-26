@@ -13,7 +13,6 @@ export interface ITestInfo {
     children: ITestInfo[];
     packageName: string;
     level: TestLevel;
-    config?: TestConfig;
 }
 
 export interface ITestResult {

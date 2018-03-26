@@ -12,7 +12,7 @@ export class ProjectManager {
     public async refresh(token?: CancellationToken): Promise<void[]> {
         return Promise.all(workspace.workspaceFolders.map((wkspace) => {
             return getProjectInfo(wkspace.uri).then((infos: ProjectInfo[]) => {
-                this.storeProjects(infos.map((i) => { i.path = this.formatPath(i.path); return i; }));
+                this.storeProjects(infos.map((i) => { i.path = Uri.parse(i.path.toString()); return i; }));
             },
             (reason) => {
                 if (token.isCancellationRequested) {
@@ -28,9 +28,13 @@ export class ProjectManager {
         this.projectInfos = this.projectInfos.concat(infos);
     }
 
+    public getAll(): ProjectInfo[] {
+        return this.projectInfos.map((i) => i);
+    }
+
     public getProjectName(file: Uri): string {
         const path: string = this.formatPath(file.fsPath);
-        const matched = this.projectInfos.filter((p) => path.startsWith(p.path));
+        const matched = this.projectInfos.filter((p) => path.startsWith(this.formatPath(p.path.fsPath)));
         if (matched.length === 0) {
             Logger.error(`Failed to get project name for file ${file}.`);
             return undefined;
@@ -55,7 +59,7 @@ export class ProjectManager {
 }
 
 export type ProjectInfo = {
-    path: string;
+    path: Uri;
     name: string;
 };
 

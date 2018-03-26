@@ -21,7 +21,6 @@ export type TestSuite = {
     level: TestLevel;
     kind: TestKind;
     result?: TestResult;
-    config?: TestConfig;
 };
 
 export type TestResult = {
