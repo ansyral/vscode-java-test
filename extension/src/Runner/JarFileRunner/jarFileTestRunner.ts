@@ -3,6 +3,7 @@
 
 import { ClassPathManager } from '../../classPathManager';
 import { TestStatusBarProvider } from '../../testStatusBarProvider';
+import * as Configs from '../../Constants/configs';
 import { TestSuite } from '../../Models/protocols';
 import { RunConfig, TestConfig } from '../../Models/testConfig';
 import { ClassPathUtility } from '../../Utils/classPathUtility';
@@ -69,7 +70,7 @@ export abstract class JarFileTestRunner implements ITestRunner {
         }
         const command: string = await this.constructCommandWithWrapper(jarParams);
         const cwd = env.config ? env.config.workingDirectory : workspace.getWorkspaceFolder(Uri.parse(env.tests[0].uri)).uri.fsPath;
-        const process = cp.exec(command, {maxBuffer: 1024 * 1024, cwd});
+        const process = cp.exec(command, { maxBuffer: Configs.CHILD_PROCESS_MAX_BUFFER_SIZE, cwd });
         return new Promise<ITestResult[]>((resolve, reject) => {
             const testResultAnalyzer: JarFileRunnerResultAnalyzer = this.getTestResultAnalyzer(jarParams);
             let bufferred: string = '';
