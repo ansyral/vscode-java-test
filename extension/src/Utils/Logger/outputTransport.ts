@@ -18,6 +18,7 @@ export class OutputTransport extends winston.Transport {
         Commands.JAVA_DEBUG_WITH_CONFIG_COMMAND,
         Commands.JAVA_TEST_EXPLORER_RUN_TEST_WITH_CONFIG,
         Commands.JAVA_TEST_EXPLORER_DEBUG_TEST_WITH_CONFIG,
+        Commands.JAVA_CANCEL_TEST,
     ]);
     private name: string;
     private level: string;

@@ -260,6 +260,6 @@ async function executeStatusCompositeCommand(): Promise<void> {
     await commands.executeCommand(selection.item);
 }
 
-function cancelTest() {
-    // to-do
+function cancelTest(): Promise<void> {
+    return TestRunnerWrapper.cancel();
 }
