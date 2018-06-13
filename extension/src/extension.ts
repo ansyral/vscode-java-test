@@ -18,7 +18,7 @@ import * as path from 'path';
 import * as pathExists from 'path-exists';
 import * as rimraf from 'rimraf';
 // tslint:disable-next-line
-import { commands, debug, languages, window, workspace, EventEmitter, ExtensionContext, OutputChannel, ProgressLocation, Uri, ViewColumn } from 'vscode';
+import { commands, debug, languages, window, workspace, EventEmitter, ExtensionContext, OutputChannel, ProgressLocation, Uri, ViewColumn, TextEdit, TextEditor } from 'vscode';
 import TelemetryReporter from 'vscode-extension-telemetry';
 import { Session, TelemetryWrapper } from 'vscode-extension-telemetry-wrapper';
 
@@ -80,6 +80,13 @@ export async function activate(context: ExtensionContext) {
         const uri = document.uri;
         testResourceManager.setDirty(uri);
         onDidChange.fire();
+    });
+
+    codeLensProvider.onDidChangeCodeLenses(async () => {
+        const editor = await getOpenedReportEditor();
+        if (editor) {
+            testReportProvider.refresh(editor.document.uri);
+        }
     });
 
     checkJavaHome().then((javaHome) => {
@@ -246,4 +253,22 @@ function openTestLogFile(logFile: string): Thenable<boolean> {
         }
         return didOpen ? true : false;
     });
+}
+
+async function getOpenedReportEditor(): Promise<TextEditor> {
+    let active = window.activeTextEditor;
+    let editor = active;
+    do {
+        if (editor != null) {
+            // If we didn't start with a valid editor, set one once we find it
+            if (active === undefined) {
+                active = editor;
+            }
+        }
+
+        editor = await commands.executeCommand<TextEditor>('workbench.action.nextEditor');
+        if (editor !== undefined && editor.document.uri.scheme === TestReportProvider.scheme) {
+            return editor;
+        }
+    } while (true);
 }
