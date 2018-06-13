@@ -82,6 +82,15 @@ export async function activate(context: ExtensionContext) {
         onDidChange.fire();
     });
 
+    codeLensProvider.onDidChangeCodeLenses(() => {
+        if (window.visibleTextEditors) {
+            const temp = window.visibleTextEditors;
+            window.visibleTextEditors.map((e) => e.document.uri).filter((u) => u.scheme === TestReportProvider.scheme).forEach((u) => {
+                testReportProvider.refresh(u);
+            });
+        }
+    });
+
     checkJavaHome().then((javaHome) => {
         context.subscriptions.push(TelemetryWrapper.registerCommand(Commands.JAVA_RUN_TEST_COMMAND, (suites: TestSuite[] | TestSuite) =>
             runTest(suites, false, true)));
