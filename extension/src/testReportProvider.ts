@@ -7,13 +7,15 @@ import { TestLevel, TestStatus, TestSuite } from './Models/protocols';
 import * as os from 'os';
 import * as path from 'path';
 import * as pug from 'pug';
-import { window, workspace, ExtensionContext, TextDocumentContentProvider, Uri, WorkspaceConfiguration } from 'vscode';
+import { window, workspace, Event, EventEmitter, ExtensionContext, TextDocumentContentProvider, Uri, WorkspaceConfiguration } from 'vscode';
+import { ActiveEditorTracker } from './activeEditorTracker';
 
 export class TestReportProvider implements TextDocumentContentProvider {
 
     public static scheme = 'test-report';
     private static compiledReportTemplate: (any) => string;
     private static compiledErrorTemplate: (any) => string;
+    private _onDidChangeReport: EventEmitter<Uri | undefined> = new EventEmitter<Uri | undefined>();
 
     constructor(private _context: ExtensionContext, private _testResourceProvider: TestResourceManager) {
         TestReportProvider.compiledReportTemplate =
@@ -22,7 +24,17 @@ export class TestReportProvider implements TextDocumentContentProvider {
             pug.compileFile(this._context.asAbsolutePath(path.join('resources', 'templates', 'report_error.pug')));
     }
 
+    public get onDidChange(): Event<Uri> {
+        return this._onDidChangeReport.event;
+    }
+
+    public refresh(uri: Uri): void {
+        this._onDidChangeReport.fire(uri);
+    }
+
     public async provideTextDocumentContent(uri: Uri): Promise<string> {
+        // test
+        const temp = await new ActiveEditorTracker().awaitNext();
         const [target, test, reportType] = decodeTestSuite(uri);
         const testsContainedInFile = target.map((t) => this._testResourceProvider.getTests(t));
         if (testsContainedInFile.findIndex((t) => !t) !== -1) {
