@@ -50,7 +50,9 @@ public class TestRunnerUtil {
             Runner runner = request.getRunner();
             return singletonList(new JUnit4TestReference(runner, runner.getDescription()));
         } catch (ClassNotFoundException e) {
-            System.err.printf("No test found to run for suite %s. Details: %s.", suite, e.getMessage());
+            System.err.println(TestingMessageHelper.createRunnerError(
+                    String.format("No test found to run for suite %s. Details: %s.", suite, e.getMessage()),
+                    e));
             return emptyList();
         }
     }
@@ -61,7 +63,9 @@ public class TestRunnerUtil {
             Runner runner = request.getRunner();
             return singletonList(new JUnit4TestReference(runner, runner.getDescription()));
         } catch (ClassNotFoundException e) {
-            System.err.printf("No test found to run for suite %s. Details: %s.", suite, e.getMessage());
+            System.err.println(TestingMessageHelper.createRunnerError(
+                    String.format("No test found to run for suite %s. Details: %s.", suite, e.getMessage()),
+                    e));
             return emptyList();
         }
     }
@@ -75,11 +79,13 @@ public class TestRunnerUtil {
                 Runner runner = request.getRunner();
                 suites.add(new JUnit4TestReference(runner, runner.getDescription()));
             } catch (ClassNotFoundException ignored) {
-                System.err.printf("Failed to parse tests for suite %s. Details: %s.", classFqn, ignored.getMessage());
+                System.err.println(TestingMessageHelper.createRunnerError(
+                        String.format("Failed to parse tests for suite %s. Details: %s.", classFqn, ignored.getMessage()),
+                        ignored));
             }
         }
         if (suites.isEmpty()) {
-            System.err.print("No test found to run.");
+            System.err.println(TestingMessageHelper.createRunnerError("No test found to run", null));
             return emptyList();
         }
         return suites;

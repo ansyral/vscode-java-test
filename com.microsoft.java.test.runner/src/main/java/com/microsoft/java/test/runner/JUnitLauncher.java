@@ -19,14 +19,14 @@ public class JUnitLauncher {
         try {
             if (args.length == 0) {
                 TestingMessageHelper.reporterAttached(System.out);
-                System.err.print("No test found to run");
+                System.err.println(TestingMessageHelper.createRunnerError("No test found to run", null));
             } else {
                 CustomizedJUnitCoreRunner jUnitCore = new CustomizedJUnitCoreRunner();
                 jUnitCore.run(args);
             }
             return 0;
         } catch (Throwable e) {
-            e.printStackTrace();
+            System.err.println(TestingMessageHelper.createRunnerError("Failed to launch JUnit", e));
             return 1;
         } finally {
             System.err.flush();
