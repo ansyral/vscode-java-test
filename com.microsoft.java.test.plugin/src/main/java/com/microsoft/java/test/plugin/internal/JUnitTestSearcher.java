@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -167,13 +168,13 @@ public abstract class JUnitTestSearcher {
             if (testPaths.size() == 0) {
                 continue;
             }
-            for (IPackageFragmentRoot root : project.getPackageFragmentRoots()) {
-                IResource resource = root.getCorrespondingResource();
-                if (resource != null && resource.getType() == IResource.FOLDER) {
-                    // add logic to check whether the resource is under test folders.
-                    elements.add(root);
+            elements.addAll(testPaths.stream().map(p -> {
+                try {
+                    return project.findElement(p);
+                } catch (JavaModelException ex) {
+                    return null;
                 }
-            }
+            }).filter(e -> e != null).collect(Collectors.toList()));
         }
         SearchRequestor requestor = new SearchRequestor() {
             @Override
@@ -185,7 +186,7 @@ public abstract class JUnitTestSearcher {
         };
 
         try {
-            IJavaSearchScope scope = SearchEngine.createJavaSearchScope(tprojects.toArray(new IJavaProject[tprojects.size()]), IJavaSearchScope.SOURCES);
+            IJavaSearchScope scope = SearchEngine.createJavaSearchScope(elements.toArray(new IJavaElement[elements.size()]));
             SearchPattern pattern = SearchPattern.createPattern("*", IJavaSearchConstants.PACKAGE, IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
             new SearchEngine().search(pattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
                     scope, requestor, monitor);
