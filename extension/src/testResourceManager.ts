@@ -17,7 +17,7 @@ export class TestResourceManager {
         const path = file.fsPath || '';
         return this.testsIndexedByFileUri.has(path) ? this.testsIndexedByFileUri.get(path) : undefined;
     }
-    public storeTests(file: Uri, tests: TestSuite[] | null | undefined): void {
+    public storeTests(file: Uri, tests: TestSuite[] | null | undefined, fireEvent: boolean = true): void {
         if (tests === undefined || tests === null) {
             return;
         }
@@ -27,12 +27,14 @@ export class TestResourceManager {
             tests,
         };
         this.testsIndexedByFileUri.set(path, test);
-        this._onDidChangeTestStorage.fire();
+        if (fireEvent) {
+            this._onDidChangeTestStorage.fire();
+        }
     }
-    public removeTests(file: Uri): void {
+    public removeTests(file: Uri, fireEvent: boolean = true): void {
         const path = file.fsPath || '';
         const deleted: boolean = this.testsIndexedByFileUri.delete(path);
-        if (deleted) {
+        if (deleted && fireEvent) {
             this._onDidChangeTestStorage.fire();
         }
     }

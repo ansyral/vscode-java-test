@@ -37,7 +37,6 @@ import { TelemetryTransport } from './Utils/Logger/telemetryTransport';
 const isWindows = process.platform.indexOf('win') === 0;
 const JAVAC_FILENAME = 'javac' + (isWindows ? '.exe' : '');
 const onDidChange: EventEmitter<void> = new EventEmitter<void>();
-const testStatusBarItem: TestStatusBarProvider = TestStatusBarProvider.getInstance();
 const outputChannel: OutputChannel = window.createOutputChannel('Test Output');
 const testResourceManager: TestResourceManager = new TestResourceManager();
 const projectManager: ProjectManager = new ProjectManager();
@@ -49,7 +48,6 @@ const testConfigManager: TestConfigManager = new TestConfigManager(projectManage
 export async function activate(context: ExtensionContext) {
     activateTelemetry(context);
     Logger.configure(context, [new TelemetryTransport({ level: 'warn' }), new OutputTransport({ level: 'info', channel: outputChannel })]);
-    await testStatusBarItem.init(testResourceManager.refresh());
     const codeLensProvider = new JUnitCodeLensProvider(onDidChange, testResourceManager);
     context.subscriptions.push(languages.registerCodeLensProvider(Configs.LANGUAGE, codeLensProvider));
     const testReportProvider: TestReportProvider = new TestReportProvider(context, testResourceManager);
@@ -137,7 +135,6 @@ export async function activate(context: ExtensionContext) {
 export function deactivate() {
     testResourceManager.dispose();
     classPathManager.dispose();
-    testStatusBarItem.dispose();
     CommandUtility.clearCommandsCache();
 }
 

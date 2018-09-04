@@ -167,6 +167,16 @@
                     "default": "sideView",
                     "description": "Specify where to show the test report",
                     "scope": "window"
+                },
+                "java.test.explorer.load": {
+                    "type": "string",
+                    "enum": [
+                        "lazy",
+                        "active"
+                    ],
+                    "default": "lazy",
+                    "description": "Specify the load type of test explorer",
+                    "scope": "window"
                 }
             }
         }

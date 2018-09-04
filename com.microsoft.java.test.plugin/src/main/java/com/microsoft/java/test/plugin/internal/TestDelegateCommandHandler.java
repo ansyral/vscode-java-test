@@ -25,6 +25,8 @@ public class TestDelegateCommandHandler implements IDelegateCommandHandler {
 
     public static String FETCH_TEST = "vscode.java.test.fetch";
     public static String SEARCH_ALL_TEST = "vscode.java.test.search.all";
+    public static String SEARCH_TEST_IN_FOLDER = "vscode.java.test.search.folder";
+    public static String SEARCH_TEST_CHILDREN = "vscode.java.test.search.children";
     public static String COMPUTE_RUNTIME_CLASSPATH = "vscode.java.test.runtime.classpath";
     public static String GET_PROJECT_INFO = "vscode.java.test.project.info";
     private static final JUnitTestSearcher[] Searchers = new JUnitTestSearcher[] {
@@ -47,6 +49,24 @@ public class TestDelegateCommandHandler implements IDelegateCommandHandler {
                 searcher.searchAllTests(res, monitor);
             }
         	return res;
+        } else if (SEARCH_TEST_IN_FOLDER.equals(commandId)) {
+            List<String> res = new ArrayList<>();
+            for (JUnitTestSearcher searcher : Searchers) {
+                if (monitor.isCanceled()) {
+                    return Collections.emptyList();
+                }
+                searcher.searchTestPackages(res, arguments, monitor);
+            }
+            return res;
+        } else if (SEARCH_TEST_CHILDREN.equals(commandId)) {
+            List<TestSuite> res = new ArrayList<>();
+            for (JUnitTestSearcher searcher : Searchers) {
+                if (monitor.isCanceled()) {
+                    return Collections.emptyList();
+                }
+                searcher.searchTestChildren(res, arguments, monitor);
+            }
+            return res;
         } else if (GET_PROJECT_INFO.equals(commandId)) {
             return ProjectInfoFetcher.getProjectInfo(arguments);
         }

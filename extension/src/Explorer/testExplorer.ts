@@ -5,13 +5,16 @@ import * as path from 'path';
 // tslint:disable-next-line
 import { window, workspace, Event, EventEmitter, ExtensionContext, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, ViewColumn, Command } from 'vscode';
 import { TestResourceManager } from '../testResourceManager';
+import { TestStatusBarProvider } from '../testStatusBarProvider';
 import * as Commands from '../Constants/commands';
 import { TestLevel, TestSuite } from '../Models/protocols';
 import { RunConfigItem } from '../Models/testConfig';
 import { TestRunnerWrapper } from '../Runner/testRunnerWrapper';
+import * as FetchTestsUtility from '../Utils/fetchTestUtility';
 import { TestTreeNode, TestTreeNodeType } from './testTreeNode';
 
 export class TestExplorer implements TreeDataProvider<TestTreeNode> {
+    private static statusBarItem: TestStatusBarProvider = TestStatusBarProvider.getInstance();
     private _onDidChangeTreeData: EventEmitter<TestTreeNode | undefined> = new EventEmitter<TestTreeNode | undefined>();
     // tslint:disable-next-line
     public readonly onDidChangeTreeData: Event<TestTreeNode | null> = this._onDidChangeTreeData.event;
@@ -36,11 +39,13 @@ export class TestExplorer implements TreeDataProvider<TestTreeNode> {
     }
 
     public getChildren(element?: TestTreeNode): TestTreeNode[] | Thenable<TestTreeNode[]> {
-        if (element) {
-            return element.children;
+        const config = workspace.getConfiguration();
+        const loadType: string = config.get<string>('java.test.explorer.load', 'lazy');
+        if (loadType === 'lazy') {
+            return this.getChildren_lazyLoad(element);
+        } else {
+            return this.getChildren_loadAll(element);
         }
-        const tests: TestSuite[] = this._testCollectionStorage.getAll().filter((t) => t.level === TestLevel.Method);
-        return this.createTestTreeNode(tests, undefined, TestTreeNodeType.Folder);
     }
 
     public select(element: TestTreeNode) {
@@ -68,12 +73,71 @@ export class TestExplorer implements TreeDataProvider<TestTreeNode> {
         return element.children.map((c) => this.resolveTestSuites(c)).reduce((a, b) => a.concat(b));
     }
 
+    private async getChildren_loadAll(element?: TestTreeNode): Promise<TestTreeNode[]> {
+        if (element) {
+            return element.children;
+        }
+        await TestExplorer.statusBarItem.init(this._testCollectionStorage.refresh());
+        const tests: TestSuite[] = this._testCollectionStorage.getAll().filter((t) => t.level === TestLevel.Method);
+        return this.createTestTreeNode(tests, undefined, TestTreeNodeType.Folder);
+    }
+
+    private async getChildren_lazyLoad(element?: TestTreeNode): Promise<TestTreeNode[]> {
+        if (!element) { // root layer
+            const folders = workspace.workspaceFolders;
+            return folders.map((f) =>
+            new TestTreeNode(path.basename(f.uri.path), f.uri.toString(), undefined, undefined, undefined, TestTreeNodeType.Folder));
+        }
+        if (!element.children) {
+            switch (element.level) {
+                case TestTreeNodeType.Folder:
+                /* await FetchTestsUtility.searchTestClasses(element.uri).then((tests: TestSuite[]) => {
+                    this.updateTestStorage(tests);
+                    element.children = this.createTestTreeNode(tests, element, TestTreeNodeType.Package, TestTreeNodeType.Class);
+                }); */
+                await FetchTestsUtility.searchPackages(element.uri).then((packages: string[]) => {
+                    element.children = packages.map((p) => new TestTreeNode(p, undefined, undefined, element, undefined, TestTreeNodeType.Package));
+                });
+                break;
+                case TestTreeNodeType.Class:
+                await FetchTestsUtility.searchChildren(this.toTestSuite(element)).then((tests: TestSuite[]) => {
+                    this.updateTestStorage(tests);
+                    element.children = tests.map((t) =>
+                                                new TestTreeNode(this.getShortName(t), t.uri, t.range, element, undefined));
+                });
+                break;
+            }
+        }
+        return element.children;
+    }
+
+    private updateTestStorage(tests: TestSuite[]) {
+        if (!tests || tests.length === 0) {
+            return;
+        }
+        const groupByDocument = tests.reduce((rv, x) => {
+            if (!rv[x.uri]) {
+                rv[x.uri] = [];
+            }
+            rv[x.uri].push(x);
+            return rv;
+        }, {});
+        for (const uri of Object.keys(groupByDocument)) {
+            this._testCollectionStorage.storeTests(Uri.parse(uri), groupByDocument[uri], false);
+        }
+    }
+
     private createTestTreeNode(
         tests: TestSuite[],
         parent: TestTreeNode,
-        level: TestTreeNodeType): TestTreeNode[] {
-        if (level === TestTreeNodeType.Method) {
-            return tests.map((t) => new TestTreeNode(this.getShortName(t), t.uri, t.range, parent, undefined));
+        level: TestTreeNodeType,
+        terminateLevel: TestTreeNodeType = TestTreeNodeType.Method): TestTreeNode[] {
+        if (level === terminateLevel) {
+            if (level === TestTreeNodeType.Method) {
+                return tests.map((t) => new TestTreeNode(this.getShortName(t), t.uri, t.range, parent, undefined));
+            } else if (level === TestTreeNodeType.Class) {
+                return tests.map((t) => new TestTreeNode(this.getShortName(t), t.uri, undefined, parent, undefined, TestTreeNodeType.Class));
+            }
         }
         const keyFunc: (_: TestSuite) => string = this.getGroupKeyFunc(level);
         const map = new Map<string, TestSuite[]>();
@@ -89,7 +153,7 @@ export class TestExplorer implements TreeDataProvider<TestTreeNode> {
         const children = [...map.entries()].map((value) => {
             const uri: string = level === TestTreeNodeType.Class ? value[1][0].uri : undefined;
             const c: TestTreeNode = new TestTreeNode(value[0], uri, undefined, parent, undefined, level);
-            c.children = this.createTestTreeNode(value[1], c, level - 1);
+            c.children = this.createTestTreeNode(value[1], c, level - 1, terminateLevel);
             return c;
         });
         return children;
